@@ -1,0 +1,10 @@
+started with backend 
+created virtual envirenment (VE) on backend folder
+        python -m venv venv
+
+run VE on backend directory : venv\Scripts\activate
+
+install these requirements inside VE: 
+        pip install flask flask_core openai python-dotenv
+
+Run app inside backend directory using: python app.py 
