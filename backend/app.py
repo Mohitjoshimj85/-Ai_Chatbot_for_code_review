@@ -1,18 +1,19 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
 from openai import OpenAI
+from flask_cors import CORS
+import json
+import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Load .env variables into the environment
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY")
-)
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 @app.route('/api/review', methods=['POST'])
 def review_code():
@@ -22,25 +23,44 @@ def review_code():
         return jsonify({"error": "No code provided"}), 400
 
     code = data['code']
-    prompt = f"Please review the following code and provide constructive feedback:\n\n{code}"
+
+    prompt = f"""
+    Review the following code and respond ONLY in JSON with this structure:
+    {{
+        "summary": "Brief overview of the code",
+        "bugs": "List of any bugs or issues found",
+        "suggestions": "Improvements or best practices suggestions"
+    }}
+
+    Code:
+    {code}
+    """
 
     try:
         response = client.chat.completions.create(
             model="deepseek/deepseek-r1-distill-llama-70b:free",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        feedback = response.choices[0].message.content.strip()
-        return jsonify({"feedback": feedback})
+        raw_reply = response.choices[0].message.content.strip()
+
+        # Try to parse AI's JSON
+        try:
+            parsed = json.loads(raw_reply)
+        except json.JSONDecodeError:
+            parsed = {
+                "summary": raw_reply,
+                "bugs": "Could not parse JSON.",
+                "suggestions": ""
+            }
+
+        return jsonify(parsed)
 
     except Exception as e:
-        error_str = str(e)
-        if "code: 408" in error_str or "timeout" in error_str.lower():
-            return jsonify({"error": "Server is busy. Please try again after some time."}), 503
-        else:
-            return jsonify({"error": f"OpenRouter request failed: {error_str}"}), 500
+        err = str(e)
+        if "408" in err:
+            return jsonify({"error": "Server is busy, please try again later."}), 503
+        return jsonify({"error": f"OpenRouter request failed: {err}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
