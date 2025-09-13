@@ -1,1 +1,13 @@
-env
+# Ignore virtual environment
+venv/
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore VS Code settings (if using VS Code)
+.vscode/
+
+# Ignore node_modules (if React frontend is inside the same repo)
+node_modules/
