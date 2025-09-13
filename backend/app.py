@@ -44,7 +44,13 @@ def review_code():
 
         raw_reply = response.choices[0].message.content.strip()
 
-        # Try to parse AI's JSON
+        # Remove ```json ... ``` or ``` wrappers if present
+        if raw_reply.startswith("```"):
+            raw_reply = raw_reply.strip("`")
+            if raw_reply.lower().startswith("json"):
+                raw_reply = raw_reply[4:].strip()
+        
+        # Try parsing JSON
         try:
             parsed = json.loads(raw_reply)
         except json.JSONDecodeError:
@@ -53,6 +59,7 @@ def review_code():
                 "bugs": "Could not parse JSON.",
                 "suggestions": ""
             }
+
 
         return jsonify(parsed)
 
